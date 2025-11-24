@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const amountHelp = document.getElementById('amountHelp');
     const rateHelp = document.getElementById('rateHelp');
     
-    // User data from template - using proper JavaScript syntax
+    // User data from template
     const userIncome = parseFloat('{{ current_user.annual_income }}') || 0;
     const userCreditScore = parseInt('{{ current_user.credit_score }}') || 650;
     const userExistingEmis = parseFloat('{{ current_user.existing_emis }}') || 0;
@@ -225,10 +225,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 <li>✅ <strong>Interest Rate:</strong> Minimum ${criteria.min_interest_rate}%</li>
                 <li>✅ <strong>Loan-to-Income:</strong> Maximum ${criteria.max_loan_to_income}x</li>
             </ul>
+            <div class="alert alert-warning mt-2">
+                <small><strong>Auto-Approval Requirements:</strong> Credit Score ≥ 750, DTI ≤ 30%, Loan-to-Income ≤ 3x</small>
+            </div>
         `;
         
         const maxEligibleAmount = userIncome * criteria.max_loan_to_income;
-        amountHelp.textContent = 'Maximum eligible: ₹' + maxEligibleAmount.toLocaleString();
+        const maxAutoApproveAmount = userIncome * 3; // More conservative for auto-approval
+        amountHelp.textContent = 'Maximum eligible: ₹' + maxEligibleAmount.toLocaleString() + ' | Auto-approval: ₹' + maxAutoApproveAmount.toLocaleString();
         rateHelp.textContent = 'Minimum: ' + criteria.min_interest_rate + '%';
     }
 
@@ -250,6 +254,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!selectedType || !amount || !rate || !term) {
             eligibilityMessage.innerHTML = '<span class="text-muted">Enter all loan details to check eligibility</span>';
             submitBtn.disabled = true;
+            submitBtn.className = 'btn btn-primary w-100';
+            submitBtn.innerHTML = 'Submit Application';
             return;
         }
 
@@ -290,9 +296,35 @@ document.addEventListener('DOMContentLoaded', function() {
             issues.push('Maximum loan-to-income: ' + criteria.max_loan_to_income + 'x');
         }
 
-        if (issues.length === 0) {
-            eligibilityMessage.innerHTML = '<span class="text-success">✅ Eligible for this loan type!</span>';
+        // Check auto-approval eligibility
+        const isAutoApprovable = (
+            issues.length === 0 &&
+            userCreditScore >= 750 &&
+            dti <= 30 &&
+            loanToIncome <= 3
+        );
+
+        if (isAutoApprovable) {
+            eligibilityMessage.innerHTML = `
+                <div class="alert alert-success">
+                    <strong>✅ Eligible for Auto-Approval!</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Credit Score: ${userCreditScore} ≥ 750</li>
+                        <li>DTI Ratio: ${dti.toFixed(1)}% ≤ 30%</li>
+                        <li>Loan-to-Income: ${loanToIncome.toFixed(1)}x ≤ 3x</li>
+                        <li>All basic criteria met</li>
+                    </ul>
+                    <small class="text-muted">This loan will be approved instantly upon submission!</small>
+                </div>
+            `;
             submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Submit for Auto-Approval';
+            submitBtn.className = 'btn btn-success w-100';
+        } else if (issues.length === 0) {
+            eligibilityMessage.innerHTML = '<span class="text-success">✅ Eligible for this loan type! (Manual Review)</span>';
+            submitBtn.disabled = false;
+            submitBtn.className = 'btn btn-primary w-100';
+            submitBtn.innerHTML = 'Submit Application';
         } else {
             let html = '<strong>❌ Not Eligible:</strong><ul class="mb-0">';
             issues.forEach(function(issue) {
@@ -301,6 +333,8 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '</ul>';
             eligibilityMessage.innerHTML = html;
             submitBtn.disabled = true;
+            submitBtn.className = 'btn btn-primary w-100';
+            submitBtn.innerHTML = 'Submit Application';
         }
     }
 

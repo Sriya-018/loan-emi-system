@@ -8,7 +8,7 @@
 </div>
 
 <div class="row mt-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-white bg-primary">
             <div class="card-body">
                 <h5 class="card-title">Total Loans</h5>
@@ -16,7 +16,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-white bg-success">
             <div class="card-body">
                 <h5 class="card-title">Approved Loans</h5>
@@ -24,11 +24,19 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-white bg-warning">
             <div class="card-body">
                 <h5 class="card-title">Pending Loans</h5>
                 <h2 class="card-text">{{ pending_loans }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Auto-Approved</h5>
+                <h2 class="card-text">{{ approved_loans }}</h2>
             </div>
         </div>
     </div>
@@ -71,7 +79,10 @@
             </div>
             <div class="card-body">
                 {% if total_loans > 0 %}
-                    <p>You have {{ approved_loans }} approved, {{ pending_loans }} pending loan applications.</p>
+                    <p>You have {{ approved_loans }} approved (including auto-approved), {{ pending_loans }} pending loan applications.</p>
+                    <div class="alert alert-info">
+                        <strong>Auto-Approval Tip:</strong> Loans with credit score ≥ 750, DTI ≤ 30%, and loan-to-income ≤ 3x get instant approval!
+                    </div>
                     <a href="{{ url_for('view_loans') }}" class="btn btn-sm btn-primary">View All Loans</a>
                 {% else %}
                     <p>You haven't applied for any loans yet.</p>

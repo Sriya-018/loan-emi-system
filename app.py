@@ -112,12 +112,12 @@ def logout():
 def dashboard():
     user_loans = Loan.query.filter_by(user_id=current_user.id).all()
     total_loans = len(user_loans)
-    approved_loans = len([loan for loan in user_loans if loan.status == 'Approved'])
+    approved_loans = len([loan for loan in user_loans if loan.status in ['Approved', 'Auto-Approved']])
     pending_loans = len([loan for loan in user_loans if loan.status == 'Pending'])
     rejected_loans = len([loan for loan in user_loans if loan.status == 'Rejected'])
     
     # Calculate total loan amount
-    total_loan_amount = sum(loan.loan_amount for loan in user_loans if loan.status == 'Approved')
+    total_loan_amount = sum(loan.loan_amount for loan in user_loans if loan.status in ['Approved', 'Auto-Approved'])
     
     return render_template('dashboard.html', 
                          total_loans=total_loans,
@@ -140,16 +140,31 @@ def apply_loan():
             current_user, loan_amount, interest_rate, loan_term, loan_type
         )
         
-        if issues:
+        # Calculate EMI for DTI check
+        new_loan_emi = LoanCalculator.calculate_emi(loan_amount, interest_rate, loan_term)
+        dti_ratio = LoanValidator.calculate_dti_ratio(current_user, new_loan_emi)
+        loan_to_income = loan_amount / current_user.annual_income if current_user.annual_income > 0 else float('inf')
+        
+        # AUTO-APPROVAL LOGIC - Option A
+        if not issues and current_user.credit_score >= 750 and dti_ratio <= 30 and loan_to_income <= 3:
+            status = 'Auto-Approved'
+            rejection_reason = None
+            flash('🎉 Loan application automatically approved! EMI schedule generated.', 'success')
+            
+            # Create loan with start date for EMI generation
+            start_date = datetime.now()
+        elif issues:
             # Auto-reject with detailed reasons
             status = 'Rejected'
             rejection_reason = ' | '.join(issues)
             flash(f'Loan application automatically rejected: {rejection_reason}', 'error')
+            start_date = None
         else:
-            # Passed all criteria - set to pending for manual review
+            # Manual review for borderline cases
             status = 'Pending'
             rejection_reason = None
-            flash('Loan application submitted successfully! Under review.', 'success')
+            flash('Loan application submitted successfully! Under review.', 'info')
+            start_date = None
         
         new_loan = Loan(
             user_id=current_user.id,
@@ -158,11 +173,32 @@ def apply_loan():
             loan_term=loan_term,
             loan_type=loan_type,
             status=status,
-            rejection_reason=rejection_reason
+            rejection_reason=rejection_reason,
+            start_date=start_date
         )
         
         db.session.add(new_loan)
         db.session.commit()
+        
+        # Generate EMI records immediately for auto-approved loans
+        if status == 'Auto-Approved':
+            schedule = LoanCalculator.generate_emi_schedule(
+                loan_amount, interest_rate, loan_term, start_date
+            )
+            
+            for emi_data in schedule:
+                emi = EMI(
+                    loan_id=new_loan.id,
+                    emi_number=emi_data['emi_number'],
+                    due_date=emi_data['due_date'],
+                    amount_due=emi_data['emi_amount'],
+                    principal_amount=emi_data['principal_component'],
+                    interest_amount=emi_data['interest_component'],
+                    status='Pending'
+                )
+                db.session.add(emi)
+            
+            db.session.commit()
         
         return redirect(url_for('view_loans'))
     
@@ -209,8 +245,8 @@ def payment_history(loan_id):
     
     emis = EMI.query.filter_by(loan_id=loan_id).order_by(EMI.emi_number).all()
     
-    # If no EMI records exist, generate them
-    if not emis and loan.status == 'Approved':
+    # If no EMI records exist for approved loans, generate them
+    if not emis and loan.status in ['Approved', 'Auto-Approved']:
         schedule = LoanCalculator.generate_emi_schedule(
             loan.loan_amount, loan.interest_rate, loan.loan_term, loan.start_date or datetime.now()
         )

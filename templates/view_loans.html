@@ -30,10 +30,14 @@
                         <td>{{ loan.loan_type }}</td>
                         <td>
                             <span class="badge 
-                                {% if loan.status == 'Approved' %}bg-success
+                                {% if loan.status == 'Approved' or loan.status == 'Auto-Approved' %}bg-success
                                 {% elif loan.status == 'Rejected' %}bg-danger
                                 {% else %}bg-warning{% endif %}">
-                                {{ loan.status }}
+                                {% if loan.status == 'Auto-Approved' %}
+                                    <i class="fas fa-bolt"></i> Auto-Approved
+                                {% else %}
+                                    {{ loan.status }}
+                                {% endif %}
                             </span>
                             {% if loan.status == 'Rejected' and loan.rejection_reason %}
                             <br>
@@ -44,7 +48,7 @@
                         </td>
                         <td>{{ loan.created_at.strftime('%Y-%m-%d') }}</td>
                         <td>
-                            {% if loan.status == 'Approved' %}
+                            {% if loan.status == 'Approved' or loan.status == 'Auto-Approved' %}
                             <a href="{{ url_for('payment_history', loan_id=loan.id) }}" class="btn btn-sm btn-primary">
                                 View EMI Schedule
                             </a>

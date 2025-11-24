@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto text-center">
+        <h1 class="display-4 mb-4">Loan & EMI Management System</h1>
+        <p class="lead">Manage your loans and track EMI payments efficiently</p>
+        
+        <div class="row mt-5">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">EMI Calculator</h5>
+                        <p class="card-text">Calculate your monthly EMI payments</p>
+                        <a href="{{ url_for('emi_calculator') }}" class="btn btn-primary">Calculate</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Apply for Loan</h5>
+                        <p class="card-text">Apply for new loans online</p>
+                        {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('apply_loan') }}" class="btn btn-primary">Apply Now</a>
+                        {% else %}
+                            <a href="{{ url_for('login') }}" class="btn btn-primary">Login to Apply</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Track Payments</h5>
+                        <p class="card-text">Monitor your loan repayment schedule</p>
+                        {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('view_loans') }}" class="btn btn-primary">View Loans</a>
+                        {% else %}
+                            <a href="{{ url_for('login') }}" class="btn btn-primary">Login to View</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

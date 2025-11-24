@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>EMI Payment Schedule</h2>
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Loan Details</h5>
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Loan Amount:</strong> ₹{{ "%.2f"|format(loan.loan_amount) }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Interest Rate:</strong> {{ loan.interest_rate }}%
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Loan Term:</strong> {{ loan.loan_term }} months
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Loan Type:</strong> {{ loan.loan_type }}
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-3">
+                        <strong>Status:</strong> 
+                        <span class="badge 
+                            {% if loan.status == 'Approved' %}bg-success
+                            {% elif loan.status == 'Rejected' %}bg-danger
+                            {% else %}bg-warning{% endif %}">
+                            {{ loan.status }}
+                        </span>
+                    </div>
+                    {% if loan.status == 'Rejected' and loan.rejection_reason %}
+                    <div class="col-md-9">
+                        <strong>Rejection Reason:</strong> {{ loan.rejection_reason }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {% if loan.status == 'Approved' %}
+            {% if emis %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>EMI No.</th>
+                            <th>Due Date</th>
+                            <th>Amount Due</th>
+                            <th>Principal</th>
+                            <th>Interest</th>
+                            <th>Status</th>
+                            <th>Paid Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emi in emis %}
+                        <tr>
+                            <td>{{ emi.emi_number }}</td>
+                            <td>{{ emi.due_date.strftime('%Y-%m-%d') }}</td>
+                            <td>₹{{ "%.2f"|format(emi.amount_due) }}</td>
+                            <td>₹{{ "%.2f"|format(emi.principal_amount) }}</td>
+                            <td>₹{{ "%.2f"|format(emi.interest_amount) }}</td>
+                            <td>
+                                <span class="badge 
+                                    {% if emi.status == 'Paid' %}bg-success
+                                    {% elif emi.status == 'Overdue' %}bg-danger
+                                    {% else %}bg-warning{% endif %}">
+                                    {{ emi.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if emi.paid_date %}
+                                    {{ emi.paid_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <p>No EMI records found for this loan.</p>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-warning">
+                <h5>Loan Not Approved</h5>
+                <p class="mb-0">
+                    {% if loan.status == 'Rejected' %}
+                        This loan application was rejected. 
+                        {% if loan.rejection_reason %}
+                            Reason: {{ loan.rejection_reason }}
+                        {% endif %}
+                    {% else %}
+                        This loan application is still under review. EMI schedule will be available once approved.
+                    {% endif %}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

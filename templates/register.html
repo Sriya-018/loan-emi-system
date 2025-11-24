@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Register</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="annual_income" class="form-label">Annual Income (₹)</label>
+                        <input type="number" class="form-control" id="annual_income" name="annual_income" min="0" step="1000" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="employment_status" class="form-label">Employment Status</label>
+                        <select class="form-select" id="employment_status" name="employment_status" required>
+                            <option value="">Select Employment Status</option>
+                            <option value="Employed">Employed</option>
+                            <option value="Self-Employed">Self-Employed</option>
+                            <option value="Unemployed">Unemployed</option>
+                            <option value="Student">Student</option>
+                            <option value="Retired">Retired</option>
+                        </select>
+                    </div>
+                    
+                    <!-- NEW FIELDS -->
+                    <div class="mb-3">
+                        <label for="credit_score" class="form-label">Credit Score (300-850)</label>
+                        <input type="number" class="form-control" id="credit_score" name="credit_score" min="300" max="850" value="650" required>
+                        <div class="form-text">
+                            <small>300-579: Poor | 580-669: Fair | 670-739: Good | 740-799: Very Good | 800-850: Excellent</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="date_of_birth" class="form-label">Date of Birth</label>
+                        <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="employment_start_date" class="form-label">Employment Start Date</label>
+                        <input type="date" class="form-control" id="employment_start_date" name="employment_start_date">
+                        <div class="form-text">Required if employed or self-employed</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="existing_emis" class="form-label">Current Monthly EMIs (₹)</label>
+                        <input type="number" class="form-control" id="existing_emis" name="existing_emis" min="0" step="100" value="0">
+                        <div class="form-text">Total of all existing loan EMIs per month</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary w-100">Register</button>
+                </form>
+                <div class="text-center mt-3">
+                    <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <!-- Dynamic Criteria Card -->
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0" id="criteriaTitle">Select Loan Type to See Criteria</h5>
+            </div>
+            <div class="card-body">
+                <div id="loanCriteria">
+                    <p class="text-muted">Please select a loan type to view specific eligibility criteria</p>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <strong>Your Profile:</strong><br>
+                        Age: <span id="userAge">--</span> years<br>
+                        Employment: {{ current_user.employment_status }} (<span id="employmentYears">--</span> years)<br>
+                        Credit Score: <span id="userCreditScore">{{ current_user.credit_score }}</span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Financials:</strong><br>
+                        Annual Income: ₹{{ "%.2f"|format(current_user.annual_income) }}<br>
+                        Existing EMIs: ₹{{ "%.2f"|format(current_user.existing_emis) }}/month<br>
+                        Debt-to-Income: <span id="currentDti">--</span>%
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Apply for Loan</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="loan_type" class="form-label">Loan Type</label>
+                            <select class="form-select" id="loan_type" name="loan_type" required>
+                                <option value="">Select Loan Type</option>
+                                <option value="Personal Loan">Personal Loan</option>
+                                <option value="Home Loan">Home Loan</option>
+                                <option value="Car Loan">Car Loan</option>
+                                <option value="Education Loan">Education Loan</option>
+                                <option value="Business Loan">Business Loan</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="loan_amount" class="form-label">Loan Amount (₹)</label>
+                            <input type="number" class="form-control" id="loan_amount" name="loan_amount" min="1000" step="1000" required>
+                            <div class="form-text" id="amountHelp">Enter loan amount</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="interest_rate" class="form-label">Interest Rate (%)</label>
+                            <input type="number" class="form-control" id="interest_rate" name="interest_rate" min="1" max="30" step="0.1" required>
+                            <div class="form-text" id="rateHelp">Enter interest rate</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="loan_term" class="form-label">Loan Term (months)</label>
+                            <input type="number" class="form-control" id="loan_term" name="loan_term" min="6" max="360" required>
+                            <div class="form-text">Minimum: 6 months</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div id="eligibilityMessage" class="alert alert-info">
+                            Enter loan details to check eligibility
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-primary w-100" id="submitBtn">Submit Application</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">EMI Preview</h5>
+            </div>
+            <div class="card-body">
+                <div id="emiPreview" class="text-center">
+                    <p class="text-muted">Enter loan details to see EMI calculation</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Loan criteria configuration
+const LOAN_CRITERIA = {
+    'Personal Loan': {
+        min_age: 21,
+        max_age_maturity: 65,
+        min_income: 300000,
+        min_employment_years: 1,
+        min_credit_score: 650,
+        max_dti_ratio: 40,
+        min_interest_rate: 10.5,
+        max_loan_to_income: 5
+    },
+    'Home Loan': {
+        min_age: 21,
+        max_age_maturity: 70,
+        min_income: 600000,
+        min_employment_years: 2,
+        min_credit_score: 700,
+        max_dti_ratio: 35,
+        min_interest_rate: 8.5,
+        max_loan_to_income: 6
+    },
+    'Car Loan': {
+        min_age: 21,
+        max_age_maturity: 65,
+        min_income: 400000,
+        min_employment_years: 1,
+        min_credit_score: 600,
+        max_dti_ratio: 45,
+        min_interest_rate: 7.5,
+        max_loan_to_income: 5
+    },
+    'Education Loan': {
+        min_age: 18,
+        max_age_maturity: 35,
+        min_income: 0,
+        min_employment_years: 0,
+        min_credit_score: 550,
+        max_dti_ratio: 0,
+        min_interest_rate: 8.0,
+        max_loan_to_income: 10
+    },
+    'Business Loan': {
+        min_age: 25,
+        max_age_maturity: 65,
+        min_income: 800000,
+        min_employment_years: 3,
+        min_credit_score: 720,
+        max_dti_ratio: 30,
+        min_interest_rate: 11.0,
+        max_loan_to_income: 4
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const loanType = document.getElementById('loan_type');
+    const loanAmount = document.getElementById('loan_amount');
+    const interestRate = document.getElementById('interest_rate');
+    const loanTerm = document.getElementById('loan_term');
+    const emiPreview = document.getElementById('emiPreview');
+    const eligibilityMessage = document.getElementById('eligibilityMessage');
+    const submitBtn = document.getElementById('submitBtn');
+    const criteriaTitle = document.getElementById('criteriaTitle');
+    const loanCriteria = document.getElementById('loanCriteria');
+    const amountHelp = document.getElementById('amountHelp');
+    const rateHelp = document.getElementById('rateHelp');
+    
+    // User data from template - using proper JavaScript syntax
+    const userIncome = parseFloat('{{ current_user.annual_income }}') || 0;
+    const userCreditScore = parseInt('{{ current_user.credit_score }}') || 650;
+    const userExistingEmis = parseFloat('{{ current_user.existing_emis }}') || 0;
+    const userDob = '{{ current_user.date_of_birth }}' || '';
+    const userEmpDate = '{{ current_user.employment_start_date }}' || '';
+    const userEmploymentStatus = '{{ current_user.employment_status }}';
+
+    function calculateAge(birthDate) {
+        if (!birthDate || birthDate === 'None' || birthDate === '') return 0;
+        try {
+            const dob = new Date(birthDate);
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const monthDiff = today.getMonth() - dob.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            return age;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    function calculateEmploymentYears(empDate) {
+        if (!empDate || empDate === 'None' || empDate === '') return 0;
+        try {
+            const startDate = new Date(empDate);
+            const today = new Date();
+            const years = (today - startDate) / (1000 * 60 * 60 * 24 * 365.25);
+            return Math.max(0, parseFloat(years.toFixed(1)));
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    function updateUserProfile() {
+        const age = calculateAge(userDob);
+        const empYears = calculateEmploymentYears(userEmpDate);
+        const monthlyIncome = userIncome / 12;
+        const currentDti = monthlyIncome > 0 ? (userExistingEmis / monthlyIncome * 100).toFixed(1) : 'N/A';
+        
+        document.getElementById('userAge').textContent = age;
+        document.getElementById('employmentYears').textContent = empYears;
+        document.getElementById('currentDti').textContent = currentDti;
+    }
+
+    function updateCriteriaDisplay(selectedType) {
+        const criteria = LOAN_CRITERIA[selectedType];
+        if (!criteria) return;
+
+        criteriaTitle.textContent = selectedType + ' - Eligibility Criteria';
+        loanCriteria.innerHTML = `
+            <ul class="list-unstyled">
+                <li>✅ <strong>Age:</strong> ${criteria.min_age}-${criteria.max_age_maturity} years</li>
+                <li>✅ <strong>Income:</strong> Minimum ₹${criteria.min_income.toLocaleString()}/year</li>
+                <li>✅ <strong>Employment:</strong> Minimum ${criteria.min_employment_years} years</li>
+                <li>✅ <strong>Credit Score:</strong> Minimum ${criteria.min_credit_score}</li>
+                <li>✅ <strong>DTI Ratio:</strong> Maximum ${criteria.max_dti_ratio}%</li>
+                <li>✅ <strong>Interest Rate:</strong> Minimum ${criteria.min_interest_rate}%</li>
+                <li>✅ <strong>Loan-to-Income:</strong> Maximum ${criteria.max_loan_to_income}x</li>
+            </ul>
+        `;
+        
+        const maxEligibleAmount = userIncome * criteria.max_loan_to_income;
+        amountHelp.textContent = 'Maximum eligible: ₹' + maxEligibleAmount.toLocaleString();
+        rateHelp.textContent = 'Minimum: ' + criteria.min_interest_rate + '%';
+    }
+
+    function calculateEMIValue(principal, annualRate, tenureMonths) {
+        const monthlyRate = annualRate / 12 / 100;
+        if (monthlyRate === 0) return principal / tenureMonths;
+        
+        const emi = (principal * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)) / 
+                   (Math.pow(1 + monthlyRate, tenureMonths) - 1);
+        return isNaN(emi) ? 0 : emi;
+    }
+
+    function checkEligibility() {
+        const selectedType = loanType.value;
+        const amount = parseFloat(loanAmount.value) || 0;
+        const rate = parseFloat(interestRate.value) || 0;
+        const term = parseInt(loanTerm.value) || 0;
+        
+        if (!selectedType || !amount || !rate || !term) {
+            eligibilityMessage.innerHTML = '<span class="text-muted">Enter all loan details to check eligibility</span>';
+            submitBtn.disabled = true;
+            return;
+        }
+
+        const criteria = LOAN_CRITERIA[selectedType];
+        const age = calculateAge(userDob);
+        const empYears = calculateEmploymentYears(userEmpDate);
+        const newEmi = calculateEMIValue(amount, rate, term);
+        const monthlyIncome = userIncome / 12;
+        const dti = monthlyIncome > 0 ? ((userExistingEmis + newEmi) / monthlyIncome * 100) : 100;
+        const loanToIncome = userIncome > 0 ? amount / userIncome : Infinity;
+        const ageAtMaturity = age + (term / 12);
+
+        let issues = [];
+
+        // Check criteria
+        if (age < criteria.min_age) {
+            issues.push('Minimum age: ' + criteria.min_age + ' years');
+        }
+        if (ageAtMaturity > criteria.max_age_maturity) {
+            issues.push('Maximum age at maturity: ' + criteria.max_age_maturity + ' years');
+        }
+        if (userIncome < criteria.min_income) {
+            issues.push('Minimum income: ₹' + criteria.min_income.toLocaleString());
+        }
+        if (empYears < criteria.min_employment_years) {
+            issues.push('Minimum employment: ' + criteria.min_employment_years + ' years');
+        }
+        if (userCreditScore < criteria.min_credit_score) {
+            issues.push('Minimum credit score: ' + criteria.min_credit_score);
+        }
+        if (dti > criteria.max_dti_ratio) {
+            issues.push('Maximum DTI: ' + criteria.max_dti_ratio + '% (Your: ' + dti.toFixed(1) + '%)');
+        }
+        if (rate < criteria.min_interest_rate) {
+            issues.push('Minimum interest rate: ' + criteria.min_interest_rate + '%');
+        }
+        if (loanToIncome > criteria.max_loan_to_income) {
+            issues.push('Maximum loan-to-income: ' + criteria.max_loan_to_income + 'x');
+        }
+
+        if (issues.length === 0) {
+            eligibilityMessage.innerHTML = '<span class="text-success">✅ Eligible for this loan type!</span>';
+            submitBtn.disabled = false;
+        } else {
+            let html = '<strong>❌ Not Eligible:</strong><ul class="mb-0">';
+            issues.forEach(function(issue) {
+                html += '<li>' + issue + '</li>';
+            });
+            html += '</ul>';
+            eligibilityMessage.innerHTML = html;
+            submitBtn.disabled = true;
+        }
+    }
+
+    function calculateEMI() {
+        const amount = parseFloat(loanAmount.value);
+        const rate = parseFloat(interestRate.value);
+        const term = parseInt(loanTerm.value);
+        
+        if (amount && rate && term) {
+            const emi = calculateEMIValue(amount, rate, term);
+            const totalPayment = emi * term;
+            const totalInterest = totalPayment - amount;
+            
+            emiPreview.innerHTML = `
+                <h4>₹${emi.toLocaleString('en-IN', {maximumFractionDigits: 2})} per month</h4>
+                <p class="text-muted">
+                    Total Interest: ₹${totalInterest.toLocaleString('en-IN', {maximumFractionDigits: 2})} | 
+                    Total Payment: ₹${totalPayment.toLocaleString('en-IN', {maximumFractionDigits: 2})}
+                </p>
+            `;
+        } else {
+            emiPreview.innerHTML = '<p class="text-muted">Enter loan details to see EMI calculation</p>';
+        }
+    }
+
+    // Event listeners
+    loanType.addEventListener('change', function() {
+        updateCriteriaDisplay(this.value);
+        checkEligibility();
+    });
+    
+    loanAmount.addEventListener('input', function() {
+        checkEligibility();
+        calculateEMI();
+    });
+    
+    interestRate.addEventListener('input', function() {
+        checkEligibility();
+        calculateEMI();
+    });
+    
+    loanTerm.addEventListener('input', function() {
+        checkEligibility();
+        calculateEMI();
+    });
+
+    // Initial setup
+    updateUserProfile();
+});
+</script>
+{% endblock %}

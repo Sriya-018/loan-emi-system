@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2>My Loans</h2>
+        
+        {% if loans %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Loan ID</th>
+                        <th>Amount</th>
+                        <th>Interest Rate</th>
+                        <th>Term</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Applied Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for loan in loans %}
+                    <tr>
+                        <td>#{{ loan.id }}</td>
+                        <td>₹{{ "%.2f"|format(loan.loan_amount) }}</td>
+                        <td>{{ loan.interest_rate }}%</td>
+                        <td>{{ loan.loan_term }} months</td>
+                        <td>{{ loan.loan_type }}</td>
+                        <td>
+                            <span class="badge 
+                                {% if loan.status == 'Approved' %}bg-success
+                                {% elif loan.status == 'Rejected' %}bg-danger
+                                {% else %}bg-warning{% endif %}">
+                                {{ loan.status }}
+                            </span>
+                            {% if loan.status == 'Rejected' and loan.rejection_reason %}
+                            <br>
+                            <small class="text-muted" data-bs-toggle="tooltip" title="{{ loan.rejection_reason }}">
+                                Reason: {{ loan.rejection_reason[:50] }}{% if loan.rejection_reason|length > 50 %}...{% endif %}
+                            </small>
+                            {% endif %}
+                        </td>
+                        <td>{{ loan.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            {% if loan.status == 'Approved' %}
+                            <a href="{{ url_for('payment_history', loan_id=loan.id) }}" class="btn btn-sm btn-primary">
+                                View EMI Schedule
+                            </a>
+                            {% elif loan.status == 'Rejected' %}
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectionModal{{ loan.id }}">
+                                View Details
+                            </button>
+                            {% else %}
+                            <span class="text-muted">Under Review</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <!-- Rejection Reason Modal -->
+                    {% if loan.status == 'Rejected' and loan.rejection_reason %}
+                    <div class="modal fade" id="rejectionModal{{ loan.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Loan Application #{{ loan.id }} - Rejected</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-danger">
+                                        <h6>Rejection Reason:</h6>
+                                        <p class="mb-0">{{ loan.rejection_reason }}</p>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <strong>Loan Amount:</strong><br>
+                                            ₹{{ "%.2f"|format(loan.loan_amount) }}
+                                        </div>
+                                        <div class="col-6">
+                                            <strong>Interest Rate:</strong><br>
+                                            {{ loan.interest_rate }}%
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-6">
+                                            <strong>Loan Term:</strong><br>
+                                            {{ loan.loan_term }} months
+                                        </div>
+                                        <div class="col-6">
+                                            <strong>Loan Type:</strong><br>
+                                            {{ loan.loan_type }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <p>You haven't applied for any loans yet.</p>
+            <a href="{{ url_for('apply_loan') }}" class="btn btn-primary">Apply for Your First Loan</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+});
+</script>
+{% endblock %}
